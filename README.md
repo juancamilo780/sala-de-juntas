@@ -4,9 +4,10 @@ Aplicativo web para **gestionar reservas de salas de juntas** dentro de la empre
 
 - Permite reservar **3 salas**: Sala 2° piso, Sala 3° piso y Sala Verde.
 - Muestra las reservas en un calendario (mes, semana, día, agenda).
-- Formulario sencillo con datos del solicitante, motivo, equipos requeridos y notas.
+- Formulario con datos del solicitante, motivo, equipos requeridos y notas.
 - **Modo estándar** (solo lectura) y **modo admin** (crea/edita/elimina).
-- Por ahora es 100% **front-only**: los datos se guardan en el navegador (localStorage)  
+- **Dashboard de equipos** para el área de sistemas (solo admin).
+- Por ahora es 100% **front-only**: los datos se guardan en el navegador (`localStorage`)  
   y está listo para que un backend se conecte más adelante.
 
 ---
@@ -26,35 +27,58 @@ Aplicativo web para **gestionar reservas de salas de juntas** dentro de la empre
 - Node.js 18+
 - npm (incluido con Node)
 
-Puedes verificar con:
+Verificar:
 
 ```bash
 node -v
 npm -v
 3. Instalación y ejecución
-Clonar o copiar el proyecto en tu equipo.
+Clonar o copiar el proyecto.
 
-Abrir la carpeta del proyecto en una terminal.
+Abrir la carpeta del proyecto en la terminal.
 
 Instalar dependencias:
 
 bash
 Copiar código
 npm install
-Iniciar el servidor de desarrollo:
+Iniciar el servidor:
 
 bash
 Copiar código
 npm run dev
-Abrir el navegador en:
+Abrir en el navegador:
 
 text
 Copiar código
 http://localhost:5173
-Nota: si ves un mensaje amarillo en consola sobre Vite, es solo un aviso, no un error.
+Los mensajes en amarillo de Vite son solo warnings, mientras no haya errores rojos, todo ok.
 
-4. Conceptos básicos del sistema
-4.1. Salas
+4. Modelo de datos (evento de calendario)
+Toda la app trabaja con un mismo tipo de objeto evento:
+
+ts
+Copiar código
+{
+  id: string
+  calendar: 'S2' | 'S3' | 'VERDE' // sala
+  start: string | Date            // inicio
+  end: string | Date              // fin
+  clientName: string              // nombre solicitante
+  phone?: string
+  reason: 'reunion' | 'presentacion' | 'otro'
+  assignedBy?: string             // quién registró
+  title?: string                  // título visible
+  notes?: string
+  equipment?: string[]            // ['videobeam','laptop','banner']
+  ownerId: string                 // dueño de la reserva (front-only)
+  supportStatus?: 'pending' | 'in_progress' | 'done' // soporte sistemas
+  supportNotes?: string
+}
+En esta versión, estos datos se guardan en localStorage, pero están listos para mapearse 1:1 a un backend.
+
+5. Uso básico del calendario
+5.1. Salas
 El sistema maneja 3 salas:
 
 Sala 2° piso (S2)
@@ -63,112 +87,57 @@ Sala 3° piso (S3)
 
 Sala Verde (VERDE)
 
-Cada pestaña en la parte superior corresponde a una sala distinta.
-Las reservas de una sala no se mezclan con las de las otras.
+Las pestañas superiores cambian la sala visible.
+Cada sala tiene su propio set de reservas.
 
-4.2. Reserva
-Cada reserva contiene:
+5.2. Navegación
+En la parte superior del calendario:
 
-Sala (calendar): S2, S3 o VERDE.
+Today, Back, Next para moverse en el tiempo.
 
-Inicio (start): fecha y hora de inicio.
+Month, Week, Day, Agenda para cambiar la vista.
 
-Fin (end): fecha y hora de finalización.
+La última vista usada se guarda automáticamente.
 
-Nombre del solicitante (clientName).
+5.3. Crear una reserva
+Opción A – Botón “+ Crear”
 
-Teléfono (phone) – opcional.
+Clic en + Crear (abajo a la derecha).
 
-Motivo (reason): reunión, presentación u otro.
-
-Quién registró (assignedBy) – opcional.
-
-Título (title) – opcional.
-
-Notas (notes) – opcional.
-
-Equipos requeridos (equipment): videobeam, PC portátil, pendón.
-
-Owner de la reserva (ownerId) – se usa a nivel interno.
-
-En el código esta estructura está documentada en:
-
-text
-Copiar código
-src/calendar/useCalendar.js
-5. Cómo usar el calendario
-5.1. Cambiar de sala
-En la parte superior, debajo del título, verás 3 botones:
-
-Sala 2° piso
-
-Sala 3° piso
-
-Sala Verde
-
-Haz clic en cada uno para cambiar la sala que estás viendo.
-El sistema recuerda la última sala en localStorage.
-
-5.2. Navegar por fechas
-En la parte superior del calendario puedes:
-
-Moverte entre semanas/meses (Back / Next / Today).
-
-Cambiar la vista:
-
-Month (Mes)
-
-Week (Semana)
-
-Day (Día)
-
-Agenda
-
-La última vista usada se guarda y se vuelve a cargar automáticamente.
-
-5.3. Crear una nueva reserva
-Hay dos formas:
-
-a) Botón “+ Crear”
-En la esquina inferior derecha haz clic en “+ Crear”.
-
-Se abrirá el formulario con:
+Se abre el formulario con:
 
 Inicio: ahora
 
 Fin: ahora + 30 minutos
 
-Completa los campos y pulsa Guardar.
+Completar y guardar.
 
-b) Seleccionar un rango en el calendario
-En la vista Week o Day, haz clic y arrastra sobre la franja de tiempo deseada,
-o haz un clic en una hora específica.
+Opción B – Seleccionando en el calendario
 
-Se abrirá el formulario con:
+En vista Week / Day, clic en una franja horaria (o arrastrar).
 
-Inicio: la hora seleccionada.
+El modal se abre con:
 
-Fin: la hora seleccionada + 30 minutos (si el fin no existía o es menor que inicio).
+Inicio: selección hecha.
 
-🔁 Siempre que cambies la hora de inicio en el formulario,
-si la hora de fin está vacía o es anterior/igual, el sistema la ajusta automáticamente a +30 min.
+Fin: inicio + 30 minutos.
+
+Siempre que cambies el inicio, si el fin no existe o es menor/igual, el sistema ajusta automáticamente el fin a inicio + 30 minutos.
 
 5.4. Campos del formulario
-En el modal Nueva reserva / Editar reserva encontrarás:
+Inicio (datetime-local)
 
-Inicio: fecha/hora de inicio.
+Fin (datetime-local)
 
-Fin: fecha/hora de fin (se ajusta automáticamente +30 min cuando cambias el inicio).
+Nombre del solicitante
 
-Nombre del solicitante: quién va a usar la sala.
+Teléfono
 
-Teléfono: contacto del solicitante.
+Motivo (reunión, presentación, otro)
 
-Motivo: reunión, presentación u otro.
+Quién registró
 
-Quién registró: persona que realiza la reserva (ej. Paola).
-
-Título (opcional): texto corto que aparece en el calendario.
+Título (opcional)
 
 Equipos requeridos:
 
@@ -176,60 +145,50 @@ Videobeam
 
 PC portátil
 
-Pendón para proyectar
+Pendón
 
-Notas: detalles adicionales (proveedor, tema, etc.).
+Notas (texto libre)
 
 Botones:
 
-Guardar: crea o actualiza la reserva.
+Guardar → crea/actualiza reserva.
 
-Cerrar: cierra el formulario sin guardar.
+Cerrar → cierra sin guardar.
 
-Eliminar: (solo en edición y en modo admin) borra la reserva.
+Eliminar → solo en edición y modo admin.
 
-5.5. Ver detalles de una reserva
-Las reservas aparecen como tarjetas en el calendario.
+5.5. Ver / editar / eliminar
+Los eventos se muestran como tarjetas dentro del calendario.
 
-Cada tarjeta muestra:
+Doble clic sobre un evento:
 
-Título o nombre del solicitante.
+En modo estándar → muestra aviso “Solo un admin puede editar esta reserva”.
 
-Nombre del solicitante.
+En modo admin → abre el modal de edición.
 
-Teléfono.
+Eliminar solo es posible en modo admin.
 
-Equipos requeridos.
+6. Modos de uso (rol)
+6.1. Modo estándar
+Pensado para usuarios “normales”:
 
-Si estás en modo estándar, verás una etiqueta “Solo lectura”.
+Pueden crear reservas.
 
-5.6. Editar o eliminar (solo admin)
-Para editar, haz doble clic sobre una reserva.
+Pueden ver todas las reservas.
 
-Para eliminar, dentro del modal pulsa el botón Eliminar.
+No pueden editar ni eliminar reservas existentes.
 
-⚠️ Esto solo funciona si estás en modo admin.
-En modo estándar, el doble clic muestra un mensaje indicando que solo un admin puede editar.
+6.2. Modo admin
+Pensado para el área de sistemas / admins:
 
-6. Modos de uso: estándar vs admin
-El sistema tiene dos modos:
+Puede crear, editar y eliminar reservas.
 
-🧍 Modo estándar
+Tiene acceso al Dashboard de equipos.
 
-Puede crear reservas.
+6.3. Cambiar de modo
+En la esquina inferior izquierda hay un botón discreto con un engranaje ⚙︎:
 
-Puede ver todas las reservas.
-
-No puede editar ni eliminar reservas.
-
-👑 Modo admin
-
-Puede crear, editar y eliminar cualquier reserva de cualquier sala.
-
-6.1. ¿Cómo se cambia el modo?
-En la esquina inferior izquierda hay un pequeño icono de engranaje ⚙︎:
-
-Gris y semitransparente → modo estándar.
+Gris claro → modo estándar.
 
 Azul → modo admin.
 
@@ -237,42 +196,98 @@ Al hacer clic:
 
 Cambia el modo.
 
-Aparece un mensaje en la parte inferior:
+Muestra un mensaje:
 
 “Has activado el modo admin”
 
 “Has vuelto a modo estándar”
 
-Nota: actualmente el “modo admin” se guarda en el navegador con localStorage.
-En un backend real, esto se debería validar con usuarios y roles.
+Nota: El rol admin se guarda en localStorage (admin-mode).
+En producción, esto debería controlarse desde un backend con autenticación real.
 
-7. Dónde se guardan los datos (versión front-only)
-Por ahora, todas las reservas se guardan en:
+7. Dashboard de equipos (solo admin)
+Además del calendario, el admin tiene un panel para sistemas.
 
-localStorage del navegador, con la clave:
+7.1. Acceso
+Estar en modo admin (⚙︎ azul).
+
+En la parte superior derecha aparece un toggle:
+
+text
+Copiar código
+[ Calendario ]  [ Dashboard de equipos ]
+Al hacer clic en Dashboard de equipos, se oculta el calendario y aparece el panel.
+
+7.2. Qué muestra
+El dashboard lista solo las reuniones que tienen equipos:
+
+Columnas:
+
+Fecha
+
+Hora (rango)
+
+Sala
+
+Solicitante
+
+Teléfono
+
+Título / Motivo
+
+Equipos (ej. “videobeam, laptop”)
+
+Estado (select)
+
+Por defecto se muestran:
+
+Reuniones a partir de hoy (no muestra históricas).
+
+Ordenadas por fecha/hora de inicio.
+
+7.3. Estado de soporte
+Cada fila tiene un select con 3 estados:
+
+Pendiente → soporte aún no atendido.
+
+En proceso → sistema preparando / montando equipos.
+
+Atendido → soporte completado.
+
+Al cambiar el estado:
+
+Se actualiza el evento en el store.
+
+Automáticamente se actualiza el resumen de arriba:
+
+text
+Copiar código
+Total: X   •   Pendiente (a)   •   En proceso (b)   •   Atendido (c)
+Esto sirve como mini tablero de carga de trabajo para sistemas.
+
+8. Persistencia de datos (front-only)
+Actualmente las reservas se guardan en localStorage con la clave:
+
 rooms-calendar-store
 
-Esto significa:
+Esto implica:
 
-Cada navegador/PC tiene sus propias reservas.
+Cada navegador tiene sus propios datos.
 
-Si se borra la caché o se cambia de equipo, se pierde la información.
+Si se limpia el storage o se cambia de equipo, se pierden.
 
-Por eso el código está preparado para que más adelante un backend guarde todo en BD.
+El código está preparado para reemplazar esa capa por un backend real.
 
-8. Guía rápida para conectar un backend (para desarrolladores)
-En src/calendar/useCalendar.js están centralizadas las operaciones:
+9. Guía rápida para integrar backend
+La lógica principal está en:
 
-upsert(data, calendarKey) → crear/actualizar reserva.
+src/calendar/useCalendar.js → store global (events, upsert, remove).
 
-remove(id) → eliminar reserva.
+src/pages/CalendarPage.jsx → reglas de negocio (validaciones de solapamiento, etc.).
 
-events → lista actual.
+src/components/EquipmentDashboard.jsx → dashboard de equipos.
 
-activeEvent → reserva seleccionada.
-
-Sugerencia de endpoints REST:
-
+9.1. Puntos de integración sugeridos
 GET /api/meetings?room=S2
 
 POST /api/meetings
@@ -281,43 +296,34 @@ PUT /api/meetings/:id
 
 DELETE /api/meetings/:id
 
-Y la forma del objeto que viaja por API debería ser:
+Los métodos del store:
 
-json
-Copiar código
-{
-  "id": "string",
-  "calendar": "S2",
-  "start": "2025-11-27T09:00:00.000Z",
-  "end": "2025-11-27T09:30:00.000Z",
-  "clientName": "Juan Pérez",
-  "phone": "3001234567",
-  "reason": "reunion",
-  "assignedBy": "Paola",
-  "title": "Reunión importante",
-  "notes": "Detalles adicionales...",
-  "equipment": ["videobeam", "laptop"],
-  "ownerId": "usuario-123"
-}
-En el código ya hay comentarios // 🔁 En backend real: ... indicando los puntos exactos donde se debería llamar a la API.
+upsert(data, calendarKey) → mapea a POST/PUT.
 
-9. Notas finales
-Este proyecto está pensado para ser simple de usar por los colaboradores y simple de extender por el equipo de sistemas.
+remove(id) → mapea a DELETE.
 
-Toda la lógica de negocio está concentrada en:
+El desarrollador de backend puede:
 
-src/pages/CalendarPage.jsx (comportamiento del calendario).
+Reemplazar la lógica interna de upsert y remove por fetch a la API.
 
-src/calendar/useCalendar.js (estado y modelo de datos).
+Mantener la forma del objeto de evento (ver sección 4).
 
-La parte visual (formularios, estilos, tarjetas) está en:
+Dejar los componentes prácticamente igual; el front no se entera del cambio.
 
-src/components/Modal.jsx
+10. Estructura de archivos relevante
+src/
 
-src/components/CalendarEvent.jsx
+calendar/useCalendar.js → estado global (Zustand) + definición de evento.
 
-src/styles.css
+pages/CalendarPage.jsx → pantalla principal.
 
-Si tienes dudas o quieres agregar nuevas salas, campos o reglas de negocio,
-el flujo ideal es modificarlos primero en el front y luego reflejarlos en el backend.
+components/Modal.jsx → formulario de reserva.
+
+components/CalendarEvent.jsx → tarjeta dentro del calendario.
+
+components/EquipmentDashboard.jsx → dashboard de equipos (admin).
+
+ui/toastStore.js → sistema de notificaciones.
+
+styles.css → estilos generales.
 ```
